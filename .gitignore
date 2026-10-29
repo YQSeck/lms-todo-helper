@@ -1,0 +1,39 @@
+# ── 个人数据：绝对不要提交 ──────────────────────────────
+# settings.json 含真实学号与本机路径
+# session.dat / cred.dat 是登录态与加密密码
+# 荔园畅课待办.xlsx 是个人表格
+# 附件/ 里是老师上传的课件，含版权内容
+data/
+
+# ── PyInstaller 打包产物 ───────────────────────────────
+# 运行库 43MB，每提交一次仓库永久膨胀，改用 Releases 分发
+_internal/
+*.exe
+*.manifest
+build/pyi/
+build/dist_tmp/
+build/_backup/
+
+# 构建时自动生成的 spec（rebuild.py 会用 --specpath 重新写）
+*.spec
+
+# 图标中间产物（app.ico 本身要保留，它是打包输入）
+build/capture.json
+build/preview_*.png
+
+# ── 虚拟环境与 Python 缓存 ─────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyd
+.eggs/
+*.egg-info/
+
+# ── 编辑器与系统杂项 ───────────────────────────────────
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
