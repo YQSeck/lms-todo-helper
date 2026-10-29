@@ -10,6 +10,7 @@ data/
 _internal/
 *.exe
 *.manifest
+*.zip
 build/pyi/
 build/dist_tmp/
 build/_backup/
