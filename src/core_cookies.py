@@ -18,6 +18,7 @@ import json
 import shutil
 import sqlite3
 import tempfile
+import time
 from ctypes import wintypes
 from pathlib import Path
 
@@ -73,13 +74,20 @@ def read_cookies(profile: Path, hosts: tuple[str, ...] = ("szu.edu.cn",)) -> dic
     if not ck.exists() or not (profile / "Local State").exists():
         return out
 
+    # 过期的一定要扔掉。带着废 cookie 去鉴权中心，服务端会判成"已登录"却签不出
+    # 有效票据，登录 POST 完还停在 authserver（现象就是"服务端未跳转"）。
+    # expires_utc = 0 表示会话级 cookie（浏览器关掉就没），没有显式有效期，保留。
+    # Chrome 时间戳 = 1601-01-01 起的微秒数，比 Unix 纪元早 11644473600 秒。
+    deadline = int((time.time() + 11644473600) * 1_000_000)
+
     tmp = Path(tempfile.mkdtemp()) / "c.db"
     try:
         shutil.copy2(ck, tmp)
         con = sqlite3.connect(tmp)
         try:
             rows = con.execute(
-                "select host_key, name, encrypted_value, value from cookies"
+                "select host_key, name, encrypted_value, value from cookies "
+                "where expires_utc = 0 or expires_utc > ?", (deadline,)
             ).fetchall()
         finally:
             con.close()

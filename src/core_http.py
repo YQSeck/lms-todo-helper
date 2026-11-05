@@ -245,8 +245,17 @@ class LmsClient:
 
     # ---------------- 登录 ----------------
     def login(self, user: str, password: str, log=print) -> dict:
+        # 之前跑过一次留下的 cookie 可能早就过期了（关机一晚就会这样）。
+        # 带着它们访问鉴权中心，服务端认得这些名字、认为已登录却不签发新票据，
+        # 结果就是打完密码还停在 authserver ——「服务端未跳转」。
+        # 自动登录必须从干净状态开始，这里把上一轮的残留全清掉。
+        self.http.cookies.clear()
         log("  正在自动登录…")
-        r = self.http.get(ENTRY, timeout=45, allow_redirects=True)
+        # 从站根进，不要用 /user/index：只有根路径会 302 到 SSO 并带上 service 参数，
+        # CAS 才知道登录完该跳回哪。/user/index 直接返回 401 且一次都不跳，
+        # 从它进只能拿到不带 service 的登录页，登录成功 CAS 也只会跳自己的
+        # 默认中转页（personalInfo），lms 拿不到 session —— 就是「服务端未跳转」。
+        r = self.http.get(f"{BASE}/", timeout=45, allow_redirects=True)
         if "authserver" not in r.url:
             # 已经是登录态
             res = self.probe()
@@ -276,6 +285,19 @@ class LmsClient:
             "rmShown": "1",
         }
         resp = self.http.post(login_url, data=data, timeout=45, allow_redirects=True)
+
+        # 认证中心通过后常常停在「个人信息」中转页，不自动回跳业务系统。
+        # 这时 CASTGC（TGT）已经拿到，但 lms 还没种下 session，直接 probe 必然 401。
+        # 必须主动访问一次站根 —— 只有根路径会触发完整 SSO 链：
+        #   lms/ -> /login -> identity(Keycloak) -> broker -> authserver
+        #        -> identity -> lms/login?ticket=ST-xxx -> lms/
+        # 走完这一步 lms 才会下发 session 和 role_token。
+        # （注意：/user/index 和 /api/* 都是直接 401，不会触发跳转，不能拿来换票）
+        if "authserver" in resp.url:
+            try:
+                self.http.get(f"{BASE}/", timeout=45, allow_redirects=True)
+            except Exception:                      # noqa: BLE001
+                pass
 
         # CAS 可能停在中转页（Keycloak broker），再探一次待办才算数
         for _ in range(3):

@@ -21,7 +21,7 @@ import core_http
 import core_runner
 
 APP_TITLE = "荔园畅课待办助手"
-VERSION = "1.1"
+VERSION = "1.2"
 
 # 打包成无控制台程序后 stdout 为 None，任何 print 都会炸，这里兜个底
 if sys.stdout is None:
